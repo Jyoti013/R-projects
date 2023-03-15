@@ -2,11 +2,10 @@
 title: 'Beans 2 Brew'
 author: "Jyoti Yadav"
 date: "11/25/2022"
-chocolate crossant, spinach something, rosemary bagel
+
 ---
 
 ```{r, warning = FALSE, message = FALSE}
-# Note: It is important that your answers are backed by evidence and statistical reasoning, i.e., why your answer is justified in this case. You will not get credit for merely presenting the results.
 
 library(fpp2) # You will always load this package before analyzing any time series data.
 library(tidyverse)
