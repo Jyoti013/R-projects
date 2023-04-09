@@ -1,1 +1,132 @@
 
+---
+Beans 2 Brew Sales Forecasting
+---
+
+```{r, warning = FALSE, message = FALSE}
+
+
+library(fpp2)
+library(tidyverse)
+library(ggplot2)
+library(urca)
+library(seasonal)
+```
+
+```{r}
+
+dataset <- read_csv("./Book4.csv",show_col_types = FALSE)
+
+dataset
+head(dataset)
+tail(dataset)
+```
+
+```{r}
+#Creating time series plot and autocorrelation plot for a dataset starting from 2017, with 52 observations per year.
+
+f_ts<-ts(dataset[,2], start = c(2017,3), frequency = 52)
+autoplot(f_ts)
+ggAcf(f_ts)
+```
+
+```{r}
+#The Box-Ljung test is being performed on the time series data represented by the object "f_ts", using a maximum lag of 10.
+
+Box.test(f_ts, type = "Lj",lag=10)
+```
+
+```{r}
+# Performing mean, naive, and seasonal naive to forecast future values of the time series.
+h<-76
+x_label<-"Year"
+y_label<-"Qty"
+plot_title<-"B2B forecast"
+
+f_train <- window(f_ts, start=c(2017,14),end = c(2021,19))
+f_test <- window(f_ts,start = c(2021,20))
+
+fc_average <- meanf(f_train, h = h)
+fc_naive <- naive(f_train, h = h)
+fc_snaive <- snaive(f_train, h = h)
+
+
+```
+
+```{r}
+autoplot(f_train) +
+  autolayer(fc_average, series = "Mean", PI = FALSE) +
+  autolayer(fc_naive, series = "Naïve", PI = FALSE) +
+  autolayer(fc_snaive, series = "Seasonal naïve", PI = FALSE) +
+  xlab(x_label) + ylab(y_label) +
+  ggtitle(paste(plot_title, " (Benchmark methods)")) +
+  guides(colour = guide_legend(title = "Forecast"))
+
+
+```
+
+```{r}
+accuracy(fc_average, f_test)
+accuracy(fc_naive, f_test)
+accuracy(fc_snaive, f_test)
+
+#The output shows the accuracy measures for three different forecasting methods (average, naive, and snaive) applied to a time series dataset. The measures include Mean Error (ME), Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), Mean Percentage Error (MPE), Mean Absolute Percentage Error (MAPE), Mean Absolute Scaled Error (MASE), Autocorrelation Function 1 (ACF1), and Theil's U statistic.
+
+#For each method, the accuracy measures are reported separately for the training and test sets. The training set is used to train the model, while the test set is used to evaluate the forecasting performance.
+
+#The lower the values of RMSE, MAE, MPE, MAPE, and MASE, the better the forecasting performance. The ACF1 measures the correlation between the forecast errors, and a value close to zero indicates that the forecast errors are uncorrelated, which is desirable. The Theil's U statistic compares the forecast values to the actual values and is used to determine if the forecast is better than simply using the historical average.
+
+#Based on the output, it appears that the snaive method performed the best, with the lowest RMSE, MAE, and MASE for both the training and test sets. The ACF1 values are close to zero, indicating that the forecast errors are uncorrelated. The Theil's U statistic is also zero for all methods, indicating that the forecasts are not significantly better than simply using the historical average.
+```
+
+```{r}
+theta_test <- thetaf(f_train)
+theta_forecast <- forecast(theta_test)
+autoplot(theta_forecast)
+accuracy(theta_forecast,f_test)
+
+#The theta method is a forecasting method based on the exponential smoothing of the logarithm of the data. The result of the accuracy function shows that the method performed worse on the training set compared to the other methods with a higher RMSE and MAE, but improved in the test set, with lower RMSE and MAE values. However, it still has a high MASE and ACF1 values, indicating that it may not be the best method for this particular dataset. The ME is negative, indicating a slight underestimation of the forecasted values. Overall, further evaluation may be necessary to determine the best forecasting method for this dataset.
+```
+
+```{r}
+fit_auto<-auto.arima(f_train)
+fit_auto
+checkresiduals(fit_auto)
+fit_auto %>% forecast(h=30) %>% autoplot(title="Auto ARIMA model")
+Arima(f_test,model = fit_auto) %>% accuracy()
+
+#he auto.arima() function has been used to fit an automatic ARIMA model to the f_train time series. The fitted model is an ARIMA(0,0,0)(1,1,0)[52], which indicates that a first-order seasonal difference and a single seasonal autoregressive term (with lag 52) are required to fit the data well.
+
+#The checkresiduals() function has been used to check the residuals of the fitted model for normality and independence, and the Arima() function has been used to make predictions on the test set. The accuracy() function has been used to evaluate the accuracy of the model by comparing the predicted values to the actual values in the test set.
+
+#The Ljung-Box test has been conducted to check if the residuals of the ARIMA model are uncorrelated. The p-value of the test is 0.03248, which is less than 0.05. Thus, the null hypothesis of uncorrelated residuals is rejected, and it is concluded that the residuals are correlated.
+
+#Overall, the automatic ARIMA model is not performing well as it's showing high RMSE and MAE values. The residuals of the fitted model are not completely uncorrelated, indicating that there may be additional patterns in the data that the model is not capturing.
+```
+
+```{r}
+f_arima_3 <- Arima(f_ts, order=c(0,0,0), seasonal=c(1,1,0),include.drift = TRUE)
+# checkresiduals(f_arima_3)
+print(" ")
+Arima(f_test,model = f_arima_3) %>% accuracy()
+
+f_arima_3
+# fit_arima_3 %>% forecast(h=12) %>% autoplot()
+
+#The code is fitting an ARIMA (AutoRegressive Integrated Moving Average) time series model to the data and making forecasts based on the model.
+
+#First, several different forecasting methods are applied to the training set (f_train) of the time series data (f_ts). The methods used are meanf, naive, snaive, and thetaf, and the resulting forecasts are compared to the actual values in the test set (f_test) using the accuracy function. The output shows different measures of forecast accuracy, including mean error (ME), root mean squared error (RMSE), mean absolute error (MAE), mean percentage error (MPE), mean absolute percentage error (MAPE), mean absolute scaled error (MASE), and Theil's U statistic.
+
+#Then, the auto.arima function is used to automatically select the best ARIMA model for the data based on a criterion such as the AIC (Akaike Information Criterion). The resulting model is plotted using autoplot, and the accuracy of the model is checked using checkresiduals and accuracy.
+
+#Finally, an ARIMA model with drift is fit to the entire time series data (f_ts) using the Arima function, and the accuracy of the model is evaluated using the accuracy function on the test set. The resulting model is also printed to the console.
+
+```
+
+```{r}
+forecast<-f_arima_3 %>% forecast(h=30) 
+forecast
+autoplot(forecast)
+#The output table shows the forecasted values for each period along with the upper and lower confidence intervals at 80% and 95% levels. The forecasted values and confidence intervals are presented for the next 30 periods after the end of the data used to build the model.
+
+```
